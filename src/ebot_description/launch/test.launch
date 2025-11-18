@@ -1,0 +1,33 @@
+<launch>
+  <!-- Load URDF -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find ebot_description)/urdf/ebot_ur5.xacro'" />
+ 
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find ebot_description)/config/diff_drive_controller.yaml" command="load"/>
+ 
+  <!-- Spawn controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" 
+        args="diff_drive_controller"/>
+ 
+  <!-- Launch Gazebo -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+ 
+  <!-- Spawn robot in Gazebo -->
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+        args="-urdf -model my_robot -param robot_description"/>
+ 
+  <!-- Launch RViz with a predefined configuration -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ebot_description)/config/rviz_config.rviz" required="true"/>
+ 
+  <!-- Publish static TF for robot base -->
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="50.0" />
+    <param name="tf_prefix" value=""/>
+  </node>
+</launch>

@@ -1,0 +1,84 @@
+<launch>
+	<arg name="gui" default="true"/>
+	<arg name="rviz_gui" default="true"/>
+	<arg name="nav" default="true"/>
+	<arg name="sim" default="true"/>
+	<arg name="random" default="false"/>
+	<arg name="services" default="true"/>
+	<arg name="pose" default="navPose"/>
+
+	<arg name="x" default="0"/>
+	<arg name="y" default="0"/>
+	<arg name="z" default="0"/>
+	<arg name="r" default="0"/>
+	<arg name="p" default="0"/>
+	<arg name="ya" default="0"/>
+
+	
+<!--   ebot -->
+    <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find ebot_description)/urdf/ebot.xacro'"/>
+
+<!--   Start Gazebo Simulation-->
+	<group if="$(eval sim and not random)">
+		<include file="$(find ebot_gazebo)/launch/packaging_assist_1.launch">
+			<arg name="gui" value="$(arg gui)"/>
+		</include>
+	</group>
+
+	<group if="$(eval sim and random)">
+		<include file="$(find ebot_gazebo)/launch/packaging_assist.launch">
+			<arg name="gui" value="$(arg gui)"/>
+		</include>
+	</group>
+
+	<group if="$(eval not sim)">
+		<!-- If sim already started delete models -->
+		<node name="deleteModels" type="deleteModels.py" pkg="ebot_main" output="screen"/>
+	</group>
+
+	
+<!-- Spawn the robot model -->
+	<node name="mybot_spawn" pkg="gazebo_ros" type="spawn_model" output="screen" 
+	    args="-urdf -param robot_description -model ebot -x $(arg x) -y $(arg y) -z $(arg z) -R $(arg r) -P $(arg p) -Y $(arg ya)" />
+
+<!-- Robot State and Joint state  -->
+<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="50.0" />
+    <param name="tf_prefix" type="string" value="" />
+</node>
+
+<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <param name="/use_gui" value="false"/>
+    <rosparam param="/source_list">[/joint_states]</rosparam>
+</node>
+
+<!-- include moveit launch file -->
+<include file="$(find pkg_moveit_ebot_ur5)/launch/ur5_moveit.launch">
+  <arg name="rviz_gui" value="$(eval rviz_gui and not nav)"/>
+</include>
+
+<group if="$(arg services)">
+	<include file="$(find ebot_main)/launch/services.launch">
+		<arg name="pose" value="$(arg pose)"/>
+	</include>
+</group>
+
+<!-- include your navigation launch file  -->		
+<group if="$(eval rviz_gui and nav)">
+	 <node name="rviz" pkg="rviz" type="rviz"   args=" -d $(find ebot_description)/rviz/ebot.rviz" />
+</group>
+
+<include file="$(find ebot_nav)/launch/navigation.launch">
+	<arg name="x" value="$(arg x)"/>
+	<arg name="y" value="$(arg y)"/>
+	<arg name="a" value="$(arg ya)"/>	
+</include> 
+
+
+<!-- <node name="pclFilterAndObjDectection" type="pclFilterAndObjDectection.py" pkg="perception" output="screen"/> -->
+
+<!-- <node name="test" pkg="ebot_nav" type="test.py" output="screen" /> -->
+
+  
+  
+</launch>
